@@ -1,0 +1,6 @@
+{
+  "name": "BuildSync",
+  "description": "A comprehensive construction coordination and general contractor platform with client portal and executive admin dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
