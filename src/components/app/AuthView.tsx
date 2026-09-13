@@ -25,6 +25,19 @@ export default function AuthView({ onLogin, onBack }: AuthViewProps) {
     const raw = (err.message || err.error_description || String(err)).toLowerCase();
     const code = (err.code || '').toLowerCase();
 
+    if (
+      code.includes('email_provider_disabled') ||
+      raw.includes('email_provider_disabled') ||
+      raw.includes('email signups are disabled') ||
+      raw.includes('email logins are disabled')
+    ) {
+      return 'Email authentication is currently disabled in your Supabase project. Please go to Supabase Dashboard -> Authentication -> Providers -> Email and turn "Enable Email provider" ON.';
+    }
+
+    if (raw.includes('load failed') || raw.includes('failed to fetch') || raw.includes('network error')) {
+      return 'Unable to reach authentication service. Please ensure the Email provider is enabled in your Supabase project (Authentication -> Providers -> Email).';
+    }
+
     if (raw.includes('email not confirmed') || raw.includes('confirm your email') || raw.includes('unconfirmed')) {
       return 'Please verify your email address. Check your inbox for the confirmation link, or sign in if already verified.';
     }
