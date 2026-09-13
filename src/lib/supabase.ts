@@ -6,7 +6,11 @@ const DEFAULT_SUPABASE_URL = 'https://ioglvhazrluyoyqzpizl.supabase.co';
 const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlvZ2x2aGF6cmx1eW95cXpwaXpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1NjAyNjcsImV4cCI6MjEwNDEzNjI2N30.XB53KJdxgo4cdAUWDWDnPrBRWWqPRTBqh5rwpOiW99U';
 
 // @ts-ignore
-let rawUrl = (import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL).trim();
+const envUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
+// If the provided URL doesn't look like a valid Supabase URL (e.g. accidentally set to a Google Client ID), use DEFAULT_SUPABASE_URL
+const isRealSupabaseUrl = envUrl.includes('supabase.co');
+let rawUrl = isRealSupabaseUrl ? envUrl : DEFAULT_SUPABASE_URL;
+
 if (rawUrl && !rawUrl.startsWith('http')) {
     rawUrl = 'https://' + rawUrl;
 }
@@ -15,8 +19,12 @@ if (rawUrl.includes('.co')) {
     rawUrl = rawUrl.split('.co')[0] + '.co';
 }
 const supabaseUrl = rawUrl;
+
 // @ts-ignore
-const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY).trim();
+const envKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+// Supabase anon keys are always JWTs starting with eyJ...
+const isRealSupabaseKey = envKey.startsWith('eyJ');
+const supabaseAnonKey = isRealSupabaseKey ? envKey : DEFAULT_SUPABASE_ANON_KEY;
 
 export const supabase = supabaseUrl && supabaseAnonKey 
   ? createClient(supabaseUrl, supabaseAnonKey, {
@@ -28,4 +36,5 @@ export const supabase = supabaseUrl && supabaseAnonKey
       }
     })
   : null;
+
 
