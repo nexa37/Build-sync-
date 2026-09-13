@@ -25,6 +25,10 @@ export default function AuthView({ onLogin, onBack }: AuthViewProps) {
     const raw = (err.message || err.error_description || String(err)).toLowerCase();
     const code = (err.code || '').toLowerCase();
 
+    if (raw.includes('email not confirmed') || raw.includes('confirm your email') || raw.includes('unconfirmed')) {
+      return 'Please verify your email address. Check your inbox for the confirmation link, or sign in if already verified.';
+    }
+
     if (
       code.includes('invalid-credential') ||
       code.includes('user-not-found') ||
@@ -34,7 +38,9 @@ export default function AuthView({ onLogin, onBack }: AuthViewProps) {
       raw.includes('wrong-password') ||
       raw.includes('invalid login credentials')
     ) {
-      return 'Invalid email or password. Please check your credentials and try again.';
+      return isSignUpMode
+        ? 'Unable to create account with these credentials. Please check your details.'
+        : 'Invalid email or password. If you do not have an account yet, click "Sign Up" below.';
     }
 
     if (code.includes('invalid-email') || raw.includes('invalid-email') || raw.includes('valid email')) {
@@ -42,7 +48,7 @@ export default function AuthView({ onLogin, onBack }: AuthViewProps) {
     }
 
     if (code.includes('email-already-in-use') || raw.includes('email-already-in-use') || raw.includes('already registered')) {
-      return 'An account with this email already exists. Please sign in instead.';
+      return 'An account with this email already exists. Please switch to "Sign In".';
     }
 
     if (code.includes('weak-password') || raw.includes('weak-password') || raw.includes('at least 6 characters')) {
@@ -55,6 +61,10 @@ export default function AuthView({ onLogin, onBack }: AuthViewProps) {
 
     if (code.includes('too-many-requests') || raw.includes('too-many-requests')) {
       return 'Too many failed attempts. Please wait a moment and try again.';
+    }
+
+    if (err.message && typeof err.message === 'string' && err.message.length > 3) {
+      return err.message;
     }
 
     return isSignUpMode
@@ -83,7 +93,7 @@ export default function AuthView({ onLogin, onBack }: AuthViewProps) {
 
     const isEmail = trimmedInput.includes('@');
     const targetEmail = isEmail 
-      ? trimmedInput 
+      ? trimmedInput.toLowerCase() 
       : `${trimmedInput.toLowerCase().replace(/[^a-z0-9_.-]/g, '')}@buildsync.internal`;
     
     const targetName = isSignUp 
@@ -108,24 +118,41 @@ export default function AuthView({ onLogin, onBack }: AuthViewProps) {
           if (error) throw error;
           if (data.user) {
             try {
-              await supabase.from('profiles').insert([
+              await supabase.from('profiles').upsert([
                 { id: data.user.id, full_name: targetName, role: 'client' }
-              ]);
+              ], { onConflict: 'id' });
             } catch {}
           }
-          localStorage.setItem('buildsync_user_name', targetName);
-          localStorage.setItem('buildsync_user_email', isEmail ? targetEmail : '');
-          setSuccessMsg('Account created successfully! Taking you to your portal...');
-          setTimeout(() => {
-            onLogin('client', targetName, isEmail ? targetEmail : '');
-          }, 600);
-          return;
+          
+          if (data.session) {
+            localStorage.setItem('buildsync_user_name', targetName);
+            localStorage.setItem('buildsync_user_email', isEmail ? targetEmail : '');
+            setSuccessMsg('Account created successfully! Taking you to your portal...');
+            setTimeout(() => {
+              onLogin('client', targetName, isEmail ? targetEmail : '');
+            }, 600);
+            return;
+          } else {
+            // Email confirmation link was sent
+            setSuccessMsg('Account created! If email confirmation is enabled on your project, please check your inbox to confirm, then sign in.');
+            setIsSignUp(false);
+            setLoading(false);
+            return;
+          }
         } else {
-          const { data, error } = await supabase.auth.signInWithPassword({ email: targetEmail, password });
+          const { data, error } = await supabase.auth.signInWithPassword({ 
+            email: targetEmail, 
+            password 
+          });
           if (error) throw error;
           if (data.user) {
-            const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', data.user.id).single();
-            const resolvedName = profile?.full_name || targetName;
+            let resolvedName = targetName;
+            try {
+              const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', data.user.id).single();
+              if (profile?.full_name) {
+                resolvedName = profile.full_name;
+              }
+            } catch {}
             localStorage.setItem('buildsync_user_name', resolvedName);
             localStorage.setItem('buildsync_user_email', isEmail ? targetEmail : '');
             onLogin('client', resolvedName, isEmail ? targetEmail : '');
@@ -138,13 +165,10 @@ export default function AuthView({ onLogin, onBack }: AuthViewProps) {
         setLoading(false);
         return;
       }
+    } else {
+      setErrorMsg('Authentication service is not connected. Please check your internet connection.');
+      setLoading(false);
     }
-
-    // Fallback if client error
-    localStorage.setItem('buildsync_user_name', targetName);
-    localStorage.setItem('buildsync_user_email', isEmail ? targetEmail : '');
-    onLogin('client', targetName, isEmail ? targetEmail : '');
-    setLoading(false);
   };
 
   return (

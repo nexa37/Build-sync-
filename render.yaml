@@ -8,3 +8,9 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+    envVars:
+      - key: VITE_SUPABASE_URL
+        value: https://ioglvhazrluyoyqzpizl.supabase.co
+      - key: VITE_SUPABASE_ANON_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlvZ2x2aGF6cmx1eW95cXpwaXpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1NjAyNjcsImV4cCI6MjEwNDEzNjI2N30.XB53KJdxgo4cdAUWDWDnPrBRWWqPRTBqh5rwpOiW99U
+
